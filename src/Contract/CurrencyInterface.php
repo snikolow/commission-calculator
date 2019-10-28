@@ -34,6 +34,18 @@ interface CurrencyInterface
     public function isValidCurrency(string $currencyCode): bool;
 
     /**
+     * Registers new currency rate.
+     *
+     * @param string $fromCurrency
+     *   The source currency.
+     * @param string $toCurrency
+     *   The target currency.
+     * @param float $rate
+     *   The rate amount.
+     */
+    public function addCurrencyRate(string $fromCurrency, string $toCurrency, float $rate): void;
+
+    /**
      * Creates a currency converter manager.
      *
      * @return \Brick\Money\CurrencyConverter

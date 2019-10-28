@@ -4,6 +4,7 @@ namespace App\Contract;
 
 use Brick\Money\CurrencyConverter;
 use Brick\Money\Money;
+use Carbon\Carbon;
 
 /**
  * Interface FeeInterface.
@@ -38,6 +39,42 @@ interface FeeInterface
      *   The currency code for the initial amount.
      */
     public function setBaseCurrency(string $currencyCode): void;
+
+    /**
+     * Sets the first day of the week.
+     *
+     * Used when formatting the date object in order to return
+     * the first day for given week, based on a date input.
+     *
+     * @see \Carbon\Carbon::setWeekStartsAt() for more information
+     * although the method is marked as deprecated, but compliant.
+     *
+     * @param int $day
+     *   The week day.
+     */
+    public function setFirstDayOfWeek(int $day = Carbon::MONDAY): void;
+
+    /**
+     * Sets the last day of the week.
+     *
+     * Used when formatting the date object in order to return
+     * the last day for given week, based on a date input.
+     *
+     * @see \Carbon\Carbon::setWeekEndsAt() for more information
+     * although the method is marked as deprecated, but compliant.
+     *
+     * @param int $day
+     *   The week day.
+     */
+    public function setLastDayOfWeek(int $day = Carbon::SUNDAY): void;
+
+    /**
+     * Sets the type of date formatting we will use when dealing with dates.
+     *
+     * @param string $format
+     *   The date format.
+     */
+    public function setDateFormatType(string $format = 'Y-m-d'): void;
 
     /**
      * Sets the date of the currently processed item.

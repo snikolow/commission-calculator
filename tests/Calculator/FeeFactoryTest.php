@@ -20,17 +20,49 @@ use PHPUnit\Framework\TestCase;
  */
 class FeeFactoryTest extends TestCase
 {
+    private $configuration = [];
+
+    protected function setUp(): void
+    {
+        $this->configuration = [
+            OperationsEnum::CASH_IN => [
+                'commission_fee' => 0.03,
+                'maximum_money' => [
+                    'amount' => 5.00,
+                    'currency' => 'EUR',
+                ],
+            ],
+            OperationsEnum::CASH_OUT => [
+                PersonEnum::NATURAL => [
+                    'commission_fee' => 0.3,
+                    'maximum_discount_money' => [
+                        'amount' => 1000.00,
+                        'currency' => 'EUR',
+                    ],
+                    'maximum_discount_operations' => 3,
+                ],
+                PersonEnum::LEGAL => [
+                    'commission_fee' => 0.3,
+                    'minimum_money' => [
+                        'amount' => 0.50,
+                        'currency' => 'EUR',
+                    ],
+                ],
+            ],
+        ];
+    }
+
     public function testFeeFactoryImplementationsAreValid(): void
     {
-        $feeManager = FeeFactory::factoryDefault(OperationsEnum::CASH_IN);
+        $feeManager = FeeFactory::factoryDefault($this->configuration, OperationsEnum::CASH_IN);
 
         $this->assertInstanceOf(CashInDefaultFee::class, $feeManager);
 
-        $feeManager = FeeFactory::factoryDefault(OperationsEnum::CASH_OUT, PersonEnum::NATURAL);
+        $feeManager = FeeFactory::factoryDefault($this->configuration, OperationsEnum::CASH_OUT, PersonEnum::NATURAL);
 
         $this->assertInstanceOf(NaturalFee::class, $feeManager);
 
-        $feeManager = FeeFactory::factoryDefault(OperationsEnum::CASH_OUT, PersonEnum::LEGAL);
+        $feeManager = FeeFactory::factoryDefault($this->configuration, OperationsEnum::CASH_OUT, PersonEnum::LEGAL);
 
         $this->assertInstanceOf(LegalFee::class, $feeManager);
     }
@@ -38,25 +70,25 @@ class FeeFactoryTest extends TestCase
     public function testExceptionWillBeThrownWithInvalidArguments(): void
     {
         try {
-            $feeManager = FeeFactory::factoryDefault('transfer', 'institution');
+            $feeManager = FeeFactory::factoryDefault($this->configuration, 'transfer', 'institution');
         } catch(\RuntimeException $ex) {
             $this->assertEquals($ex->getMessage(), MessagesEnum::EXCEPTION_MISSING_IMPLEMENTATION);
         }
 
         $this->expectException(\RuntimeException::class);
-        $feeManager = FeeFactory::factoryDefault('transfer', 'institution');
+        $feeManager = FeeFactory::factoryDefault($this->configuration, 'transfer', 'institution');
     }
 
     public function testExceptionWillBeThrownForCashOutAndMissingPerson()
     {
         try {
-            $feeManager = FeeFactory::factoryDefault(OperationsEnum::CASH_OUT);
+            $feeManager = FeeFactory::factoryDefault($this->configuration, OperationsEnum::CASH_OUT);
         } catch(\InvalidArgumentException $ex) {
             $this->assertEquals($ex->getMessage(), MessagesEnum::EXCEPTION_MISSING_PERSON);
         }
 
         $this->expectException(\InvalidArgumentException::class);
-        $feeManager = FeeFactory::factoryDefault(OperationsEnum::CASH_OUT);
+        $feeManager = FeeFactory::factoryDefault($this->configuration, OperationsEnum::CASH_OUT);
     }
 
     public function testFeeWontBeCalculatedForSingleOperation()
@@ -70,7 +102,7 @@ class FeeFactoryTest extends TestCase
         $this->assertEquals(0, $feeManager->calculateFee($money));
     }
 
-    public function testFeeWontBeCalculatedForTwoOperationsInEuro()
+    public function testFeeWontBeCalculatedForThreeOperationsInEuro()
     {
         $entries = [];
         $mapping = [
@@ -83,6 +115,8 @@ class FeeFactoryTest extends TestCase
             $money = Money::of($entry[4], $entry[5]);
             $feeManager = $this->createFeeManager($money, $entry[2], $entry[3]);
             $feeManager->setStaticEntries($entries);
+            $feeManager->setUserId($entry[1]);
+            $feeManager->setDate($entry[0]);
 
             $this->assertEquals(0, $feeManager->calculateFee($money));
         }
@@ -137,7 +171,7 @@ class FeeFactoryTest extends TestCase
 
     protected function createFeeManager(Money $money, $operation, $personType)
     {
-        $feeManager = FeeFactory::factoryDefault($operation, $personType);
+        $feeManager = FeeFactory::factoryDefault($this->configuration, $operation, $personType);
         $currencyManager = new CurrencyManager();
         $converter = $currencyManager->getCurrencyConverter();
 

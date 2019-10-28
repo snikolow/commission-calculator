@@ -3,18 +3,85 @@
 namespace App\Calculator\Fee\CashOut;
 
 use App\Calculator\Fee\AbstractFee;
+use App\Contract\Fee\NaturalFeeInterface;
 use App\Enum\CurrencyEnum;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
+use Carbon\Carbon;
 
 /**
  * Class NaturalFee.
  *
  * @package App\Calculator\Fee\CashOut
  */
-class NaturalFee extends AbstractFee
+class NaturalFee extends AbstractFee implements NaturalFeeInterface
 {
+    /**
+     * Indicates whether or not the calculate operation should be free of charge.
+     *
+     * @var bool
+     */
     private $freeOfCharge = false;
+
+    /**
+     * The commission fee.
+     *
+     * @var float
+     */
+    private $commissionFee = 0.3;
+
+    /**
+     * The maximum discount amount.
+     *
+     * @var float
+     */
+    private $discountAmount = 1000.00;
+
+    /**
+     * The discount currency code.
+     *
+     * @var string
+     */
+    private $discountCurrency = 'EUR';
+
+    /**
+     * Maximum operations before starting to apply full charges.
+     *
+     * @var int
+     */
+    private $operationsCount = 3;
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCommissionFee(float $fee): void
+    {
+        $this->commissionFee = $fee;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setMaximumDiscountAmount(float $amount): void
+    {
+        $this->discountAmount = $amount;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setDiscountCurrencyCode(string $currency): void
+    {
+        $this->discountCurrency = $currency;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setMaximumOperationsCount(int $number): void
+    {
+        $this->operationsCount = $number;
+    }
 
     /**
      * {@inheritdoc}
@@ -40,7 +107,7 @@ class NaturalFee extends AbstractFee
         }
 
         $money = $money
-            ->multipliedBy($this->getCommissionFee(), RoundingMode::UP)
+            ->multipliedBy($this->commissionFee, RoundingMode::UP)
             ->dividedBy(100, RoundingMode::UP);
 
         if (CurrencyEnum::EUR !== $this->baseCurrency) {
@@ -48,42 +115,6 @@ class NaturalFee extends AbstractFee
         }
 
         return $money->getAmount();
-    }
-
-    /**
-     * Returns the applied commission fee percentage
-     *
-     * @return float
-     *   The applied percentage.
-     */
-    protected function getCommissionFee(): float
-    {
-        return 0.3;
-    }
-
-    /**
-     * Returns the maximum applicable discount amount.
-     *
-     * The "money" class is flexible enough to work well
-     * with strings, decimals, big numbers and so on.
-     *
-     * @return string
-     *   The discount amount.
-     */
-    protected function getMaximumDiscountAmount(): string
-    {
-        return '1000.00';
-    }
-
-    /**
-     * Returns the amount of operations before denying any further discounts.
-     *
-     * @return int
-     *   The amount of operations.
-     */
-    protected function getMaximumOperationsCount(): int
-    {
-        return 3;
     }
 
     /**
@@ -105,7 +136,7 @@ class NaturalFee extends AbstractFee
         if (!isset($this->staticEntries[$entryKey])) {
             $this->staticEntries[$entryKey] = [
                 'operations_count' => 0,
-                'remaining_discount' => Money::of($this->getMaximumDiscountAmount(), 'EUR'),
+                'remaining_discount' => Money::of($this->discountAmount, $this->discountCurrency),
             ];
         }
 
@@ -113,11 +144,11 @@ class NaturalFee extends AbstractFee
         $currentRemainingDiscount = $this->staticEntries[$entryKey]['remaining_discount'];
         $currentOperationsCount = $this->staticEntries[$entryKey]['operations_count'];
 
-        if ($currentOperationsCount >= $this->getMaximumOperationsCount()) {
+        if ($currentOperationsCount >= $this->operationsCount) {
             // We have exceeded the 3 discount operations,
             // so proceed with default calculations.
             $this->freeOfCharge = false;
-        } elseif ($currentOperationsCount < $this->getMaximumOperationsCount()
+        } elseif ($currentOperationsCount < $this->operationsCount
             && $money->isEqualTo($currentRemainingDiscount)
         ) {
             // We have requested the exact amount of money as the one
@@ -126,7 +157,7 @@ class NaturalFee extends AbstractFee
             // will no longer be active for the entire week as well.
             $currentRemainingDiscount = Money::of('0', 'EUR');
             $this->freeOfCharge = true;
-        } elseif ($currentOperationsCount < $this->getMaximumOperationsCount()
+        } elseif ($currentOperationsCount < $this->operationsCount
             && $currentRemainingDiscount->isGreaterThan(0)
             && $currentRemainingDiscount->isLessThan($money)
         ) {
@@ -135,7 +166,7 @@ class NaturalFee extends AbstractFee
             // the requested amount and calculate the fees on top of it.
             $money = $money->minus($currentRemainingDiscount);
             $currentRemainingDiscount = Money::of('0', 'EUR');
-        } elseif ($currentOperationsCount < $this->getMaximumOperationsCount()
+        } elseif ($currentOperationsCount < $this->operationsCount
             && $currentRemainingDiscount->isGreaterThan(0)
             && $currentRemainingDiscount->isGreaterThan($money)
         ) {
@@ -163,10 +194,25 @@ class NaturalFee extends AbstractFee
      */
     protected function generateEntryKey(): string
     {
-        $dateTime = new \DateTime($this->currentDate);
-        $weekNumber = $dateTime->format('W');
-        $year = $dateTime->format('Y');
+        Carbon::setWeekStartsAt($this->getFirstDayOfWeek());
+        Carbon::setWeekEndsAt($this->getLastDayOfWeek());
 
-        return md5(sprintf('%s-%s-%s', $year, $weekNumber, $this->currentUserId));
+        /** @var Carbon $carbon */
+        $carbon = Carbon::createFromFormat($this->getDateFormatType(), $this->currentDate);
+
+        // Creates a carbon object from given date and then the same object
+        // is used to obtain the first and last day of the week for the
+        // given date. By doing this, we can create a range of dates,
+        // combined with the unique identifier of the user (UserID),
+        // we ensure to cover the case of 2 dates on the same week, but
+        // with overlapping years.
+        return md5(
+            sprintf(
+                '%s#%s#%s',
+                $carbon->startOfWeek()->format($this->getDateFormatType()),
+                $carbon->endOfWeek()->format($this->getDateFormatType()),
+                $this->currentUserId
+            )
+        );
     }
 }

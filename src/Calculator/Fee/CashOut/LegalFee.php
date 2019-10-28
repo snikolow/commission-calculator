@@ -3,6 +3,7 @@
 namespace App\Calculator\Fee\CashOut;
 
 use App\Calculator\Fee\AbstractFee;
+use App\Contract\Fee\LegalFeeInterface;
 use App\Enum\CurrencyEnum;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
@@ -12,8 +13,53 @@ use Brick\Money\Money;
  *
  * @package App\Calculator\Fee\CashOut
  */
-class LegalFee extends AbstractFee
+class LegalFee extends AbstractFee implements LegalFeeInterface
 {
+    /**
+     * The commission fee.
+     *
+     * @var float
+     */
+    private $commissionFee = 0.3;
+
+    /**
+     * The minimum amount to be charged.
+     *
+     * @var float
+     */
+    private $minimumAmount = 0.50;
+
+    /**
+     * The amount currency code.
+     *
+     * @var string
+     */
+    private $minimumAmountCurrency = 'EUR';
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCommissionFee(float $fee): void
+    {
+        $this->commissionFee = $fee;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setMinimumAmount(float $amount): void
+    {
+        $this->minimumAmount = $amount;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCurrencyCode(string $currency): void
+    {
+        $this->minimumAmountCurrency = $currency;
+    }
+
     /**
      * {@inheritdoc}
      *
@@ -28,7 +74,7 @@ class LegalFee extends AbstractFee
     {
         $money = $this
             ->getMoneyInEuro($money)
-            ->multipliedBy($this->getCommissionFee(), RoundingMode::DOWN)
+            ->multipliedBy($this->commissionFee, RoundingMode::DOWN)
             ->dividedBy(100, RoundingMode::DOWN);
 
         // Compare the original/converted amount in euro to the one
@@ -50,17 +96,6 @@ class LegalFee extends AbstractFee
     }
 
     /**
-     * Returns the applied commission fee percentage
-     *
-     * @return float
-     *   The applied percentage.
-     */
-    protected function getCommissionFee(): float
-    {
-        return 0.3;
-    }
-
-    /**
      * Returns the maximum amount in euro that can be applied as a fee.
      *
      * @return \Brick\Money\Money
@@ -68,6 +103,6 @@ class LegalFee extends AbstractFee
      */
     protected function getMinimumMoney(): Money
     {
-        return Money::of('0.50', 'EUR');
+        return Money::of($this->minimumAmount, $this->minimumAmountCurrency);
     }
 }

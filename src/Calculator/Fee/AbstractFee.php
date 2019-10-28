@@ -7,6 +7,7 @@ use App\Enum\CurrencyEnum;
 use Brick\Math\RoundingMode;
 use Brick\Money\CurrencyConverter;
 use Brick\Money\Money;
+use Carbon\Carbon;
 
 /**
  * Class AbstractFee.
@@ -51,6 +52,27 @@ abstract class AbstractFee implements FeeInterface
     protected $staticEntries = [];
 
     /**
+     * The date format type. Defaults to Y-m-d.
+     *
+     * @var string
+     */
+    private $dateFormatType = 'Y-m-d';
+
+    /**
+     * The first day of a week. Defaults to (1) Monday.
+     *
+     * @var int
+     */
+    private $firstDayOfWeek = Carbon::MONDAY;
+
+    /**
+     * The last day of a week. Defaults to (0) Sunday;
+     *
+     * @var int
+     */
+    private $lastDayOfWeek = Carbon::SUNDAY;
+
+    /**
      * {@inheritdoc}
      */
     public function setCurrencyConverter(CurrencyConverter $currencyConverter): void
@@ -64,6 +86,30 @@ abstract class AbstractFee implements FeeInterface
     public function setBaseCurrency(string $currencyCode): void
     {
         $this->baseCurrency = $currencyCode;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setDateFormatType(string $format = 'Y-m-d'): void
+    {
+        $this->dateFormatType = $format;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setFirstDayOfWeek(int $day = Carbon::MONDAY): void
+    {
+        $this->firstDayOfWeek = $day;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setLastDayOfWeek(int $day = Carbon::SUNDAY): void
+    {
+        $this->lastDayOfWeek = $day;
     }
 
     /**
@@ -132,5 +178,38 @@ abstract class AbstractFee implements FeeInterface
     {
         return $this->currencyConverter
             ->convert($money, $this->baseCurrency, $roundingMode);
+    }
+
+    /**
+     * Returns the configured date formatting type.
+     *
+     * @return string
+     *   The date format.
+     */
+    final protected function getDateFormatType(): string
+    {
+        return $this->dateFormatType;
+    }
+
+    /**
+     * Returns the configured date setting.
+     *
+     * @return int
+     *   The first day of the week.
+     */
+    final protected function getFirstDayOfWeek(): int
+    {
+        return $this->firstDayOfWeek;
+    }
+
+    /**
+     * Returns the configured date setting.
+     *
+     * @return int
+     *   The last day of the week.
+     */
+    final protected function getLastDayOfWeek(): int
+    {
+        return $this->lastDayOfWeek;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Calculator\Fee\CashIn;
 
 use App\Calculator\Fee\AbstractFee;
+use App\Contract\Fee\CashInFeeInterface;
 use App\Enum\CurrencyEnum;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
@@ -12,8 +13,53 @@ use Brick\Money\Money;
  *
  * @package App\Calculator\Fee\CashIn
  */
-class CashInDefaultFee extends AbstractFee
+class CashInDefaultFee extends AbstractFee implements CashInFeeInterface
 {
+    /**
+     * The commission fee.
+     *
+     * @var float
+     */
+    private $commissionFee = 0.03;
+
+    /**
+     * The maximum amount to be charged.
+     *
+     * @var float
+     */
+    private $maximumAmount = 5.00;
+
+    /**
+     * The amount currency code.
+     *
+     * @var string
+     */
+    private $maximumAmountCurrency = 'EUR';
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCommissionFee(float $fee): void
+    {
+        $this->commissionFee = $fee;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setMaximumAmount(float $amount): void
+    {
+        $this->maximumAmount = $amount;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCurrencyCode(string $currency): void
+    {
+        $this->maximumAmountCurrency = $currency;
+    }
+
     /**
      * {@inheritdoc}
      *
@@ -28,7 +74,7 @@ class CashInDefaultFee extends AbstractFee
     {
         $money = $this
             ->getMoneyInEuro($money)
-            ->multipliedBy($this->getCommissionFee(), RoundingMode::DOWN)
+            ->multipliedBy($this->commissionFee, RoundingMode::DOWN)
             ->dividedBy(100, RoundingMode::DOWN);
 
         // Compare the original/converted amount in euro to the one
@@ -50,17 +96,6 @@ class CashInDefaultFee extends AbstractFee
     }
 
     /**
-     * Returns the applied commission fee percentage
-     *
-     * @return float
-     *   The applied percentage.
-     */
-    protected function getCommissionFee(): float
-    {
-        return 0.03;
-    }
-
-    /**
      * Returns the maximum amount in euro that can be applied as a fee.
      *
      * @return \Brick\Money\Money
@@ -68,6 +103,6 @@ class CashInDefaultFee extends AbstractFee
      */
     protected function getMaximumMoney(): Money
     {
-        return Money::of('5.00', 'EUR');
+        return Money::of($this->maximumAmount, $this->maximumAmountCurrency);
     }
 }

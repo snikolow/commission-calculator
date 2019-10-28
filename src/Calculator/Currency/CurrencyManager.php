@@ -30,10 +30,7 @@ class CurrencyManager implements CurrencyInterface
      *
      * @var array
      */
-    private $rates = [
-        ['from' => CurrencyEnum::EUR, 'to' => CurrencyEnum::USD, 'rate' => '1.1497'],
-        ['from' => CurrencyEnum::EUR, 'to' => CurrencyEnum::JPY, 'rate' => '129.53'],
-    ];
+    private $rates = [];
 
     /**
      * {@inheritdoc}
@@ -57,6 +54,18 @@ class CurrencyManager implements CurrencyInterface
         $currencyCode = strtoupper($currencyCode);
 
         return in_array($currencyCode, $this->validCurrencies);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addCurrencyRate(string $fromCurrency, string $toCurrency, float $rate): void
+    {
+        $this->rates[] = [
+            'from' => $fromCurrency,
+            'to' => $toCurrency,
+            'rate' => $rate,
+        ];
     }
 
     /**

@@ -6,7 +6,8 @@
         }
     },
     "require": {
-        "brick/money": "^0.4.2"
+        "brick/money": "^0.4.2",
+        "nesbot/carbon": "^2.25"
     },
     "require-dev": {
         "phpunit/phpunit": "^8",

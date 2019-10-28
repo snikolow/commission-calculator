@@ -5,6 +5,7 @@
   * Composer
 #### Libraries included
   * [brick/money](https://github.com/brick/money)
+  * [nesbot/carbon](https://github.com/briannesbitt/Carbon)
   * [sebastianbergmann/phpunit](https://github.com/sebastianbergmann/phpunit)
   * [squizlabs/php_codesniffer](https://github.com/squizlabs/php_codesniffer)
 ### Instructions

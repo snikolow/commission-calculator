@@ -6,7 +6,10 @@ use App\Calculator\FeeFactory;
 use App\Calculator\Currency\CurrencyManager;
 use App\Calculator\Operation\OperationManager;
 use App\Calculator\Person\PersonManager;
+use App\Enum\CurrencyEnum;
 use App\Enum\MessagesEnum;
+use App\Enum\OperationsEnum;
+use App\Enum\PersonEnum;
 use Brick\Money\Money;
 
 // Contains the processed entry in the memory in order
@@ -14,9 +17,40 @@ use Brick\Money\Money;
 $entries = [];
 
 $operationManager = new OperationManager();
-$currencyManager = new CurrencyManager();
 $personManager = new PersonManager();
+
+$currencyManager = new CurrencyManager();
+$currencyManager->addCurrencyRate(CurrencyEnum::EUR, CurrencyEnum::USD, 1.1497);
+$currencyManager->addCurrencyRate(CurrencyEnum::EUR, CurrencyEnum::JPY, 129.53);
+
 $converter = $currencyManager->getCurrencyConverter();
+
+$configuration = [
+    OperationsEnum::CASH_IN => [
+        'commission_fee' => 0.03,
+        'maximum_money' => [
+            'amount' => 5.00,
+            'currency' => 'EUR',
+        ],
+    ],
+    OperationsEnum::CASH_OUT => [
+        PersonEnum::NATURAL => [
+            'commission_fee' => 0.3,
+            'maximum_discount_money' => [
+                'amount' => 1000.00,
+                'currency' => 'EUR',
+            ],
+            'maximum_discount_operations' => 1,
+        ],
+        PersonEnum::LEGAL => [
+            'commission_fee' => 0.3,
+            'minimum_money' => [
+                'amount' => 0.50,
+                'currency' => 'EUR',
+            ],
+        ],
+    ],
+];
 
 if (!isset($argc) || empty($argc) || $argc < 2) {
     print "Missing arguments!\n";
@@ -49,7 +83,7 @@ foreach ($table as $row) {
         );
     }
 
-    $feeManager = FeeFactory::factoryDefault($row[3], $row[2]);
+    $feeManager = FeeFactory::factoryDefault($configuration, $row[3], $row[2]);
     $feeManager->setBaseCurrency($money->getCurrency()->getCurrencyCode());
     $feeManager->setCurrencyConverter($converter);
     $feeManager->setDate($row[0]);
